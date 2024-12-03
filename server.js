@@ -27,46 +27,26 @@ app.use((req, res, next) => {
   next();
 });
 
-const router = express.Router()
-
-router.post('/createUser', function(req, res, next) {
-  try {
-    const { userName } = req.body;
-    if (chat.users.some((user) => user.name == userName )) {
-      throw new Error('Пользователь с таким именем уже существует')
-    }
-
-    chat.addUser(userName);
-    res.send(JSON.stringify(userName)).end()
-  } catch (e) {
-    res.status(409).send(JSON.stringify({ 'error': e.message }))
-  }
-  next();
-})
-
-app.use(router);
-
 const port = process.env.PORT || 7070;
 const server = createServer(app)
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
-  const messages = chat.messages
-  const users = chat.users
-  ws.send(JSON.stringify({ messages }));
-  ws.send(JSON.stringify({ users }));
 
   ws.on('message', (message) => {
-
     const parsedMessage = JSON.parse(message)
 
     if (parsedMessage.userReg) {
 
-      const user = parsedMessage.userReg
+      chat.addUser(parsedMessage.userReg)
+
+      const messages = chat.messages
+      const users = chat.users
+      ws.send(JSON.stringify({ messages }));
 
       Array.from(wss.clients)
         .filter(client => client.readyState == ws.OPEN)
-        .forEach(client => client.send(JSON.stringify({ newUser: user })));
+        .forEach(client => client.send(JSON.stringify({ users })));
 
       return
     } else if (parsedMessage.closeName) {
